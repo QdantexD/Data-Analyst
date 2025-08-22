@@ -1,0 +1,48 @@
+-- Crear tabla activities
+CREATE TABLE activities (
+    activity_id INTEGER PRIMARY KEY,
+    user_id INTEGER,
+    activity_type VARCHAR(10), -- 'send', 'open', 'chat'
+    time_spent FLOAT,
+    activity_date TIMESTAMP
+);
+
+-- Crear tabla age_breakdown
+CREATE TABLE age_breakdown (
+    user_id INTEGER PRIMARY KEY,
+    age_bucket VARCHAR(10) -- '21-25', '26-30', '31-35'
+);
+
+-- Insertar datos de ejemplo en activities
+INSERT INTO activities (activity_id, user_id, activity_type, time_spent, activity_date) VALUES
+(7274, 123, 'open', 4.50, '2022-06-22 12:00:00'),
+(2425, 123, 'send', 3.50, '2022-06-22 12:00:00'),
+(1413, 456, 'send', 5.67, '2022-06-23 12:00:00'),
+(1414, 789, 'chat', 11.00, '2022-06-25 12:00:00'),
+(2536, 456, 'open', 3.00, '2022-06-25 12:00:00');
+
+-- Insertar datos de ejemplo en age_breakdown
+INSERT INTO age_breakdown (user_id, age_bucket) VALUES
+(123, '31-35'),
+(456, '26-30'),
+(789, '21-25');
+
+-- =======================================
+-- Consulta: % de tiempo en 'send' vs 'open' por grupo de edad
+-- =======================================
+WITH activity_summary AS (
+    SELECT 
+        ab.age_bucket,
+        SUM(CASE WHEN a.activity_type = 'send' THEN a.time_spent ELSE 0 END) AS total_send,
+        SUM(CASE WHEN a.activity_type = 'open' THEN a.time_spent ELSE 0 END) AS total_open
+    FROM activities a
+    JOIN age_breakdown ab ON a.user_id = ab.user_id
+    WHERE a.activity_type IN ('send','open')
+    GROUP BY ab.age_bucket
+)
+SELECT 
+    age_bucket,
+    ROUND( (100.0 * total_send / NULLIF(total_send + total_open,0))::numeric, 2 ) AS send_perc,
+    ROUND( (100.0 * total_open / NULLIF(total_send + total_open,0))::numeric, 2 ) AS open_perc
+FROM activity_summary
+ORDER BY age_bucket;
